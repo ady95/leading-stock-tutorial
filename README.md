@@ -1,6 +1,10 @@
 # AI로 찾는 오늘의 대장주 따라하기 — 예제 코드
 
+<a href="https://wikidocs.net/book/21789"><img src="assets/book-cover.png" alt="AI로 찾는 오늘의 대장주 따라하기 표지" width="300"></a>
+
 위키독스 도서 **《AI로 찾는 오늘의 대장주 따라하기》**(부제: 한국투자증권 API와 LightGBM·LLM·VLM으로 만드는 실시간 주도주 탐색 시스템)의 예제 코드 저장소입니다.
+
+- 책 읽기: [https://wikidocs.net/book/21789](https://wikidocs.net/book/21789)
 
 한국투자증권 Open API로 국내 주식 데이터를 수집하고, 규칙 기반 Leader Score → LightGBM 랭킹 → LLM·VLM 분석 순서로 **오늘의 주도 테마와 대장주 후보를 찾고, 그 선정 결과를 검증하는 AI 대장주 모니터**를 만듭니다.
 
