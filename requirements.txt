@@ -1,11 +1,12 @@
-requests
-websockets
-python-dotenv
-pandas
-duckdb
-lightgbm
-scikit-learn
-openai
-matplotlib
-plotly
-streamlit
+# 2026-10 실측 버전 (Python 3.10.18, Windows 11)
+requests==2.34.2
+websockets==16.1.1
+python-dotenv==1.2.4
+pandas==2.3.3
+duckdb==1.5.6
+lightgbm==4.7.0
+scikit-learn==1.7.2
+openai==3.35.1
+matplotlib==3.10.9
+plotly==7.1.0
+streamlit==1.65.0
