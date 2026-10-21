@@ -1,0 +1,11 @@
+requests
+websockets
+python-dotenv
+pandas
+duckdb
+lightgbm
+scikit-learn
+openai
+matplotlib
+plotly
+streamlit
