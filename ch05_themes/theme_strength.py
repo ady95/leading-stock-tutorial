@@ -27,13 +27,17 @@ def members_at(con, date, t):
     return m
 
 
+def positive_ratio(s):
+    return (s > 0).mean()
+
+
 def theme_table(m):
     """테마별 지표와 점수. 점수는 네 지표의 테마 간 백분위 순위를 평균한 값이다."""
     g = m.groupby(["theme_code", "theme_name"])
     t = pd.DataFrame({
         "n_obs": g.code.count(),
         "n_strong": g.strong.sum(),
-        "breadth": g.rel_strength.apply(lambda x: (x > 0).mean()),   # 시장보다 강한 종목 비율
+        "breadth": g.rel_strength.apply(positive_ratio),   # 시장보다 강한 종목 비율
         "med_rs": g.rel_strength.median(),
         "value_surge": g.acc_value.sum() / g.expected_value.sum(),   # 테마 전체의 평소 대비 거래대금
         "value_share": g.value_share.sum(),
