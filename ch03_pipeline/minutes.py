@@ -15,11 +15,15 @@ from common.kis import KIS
 
 PATH = "/uapi/domestic-stock/v1/quotations/inquire-time-dailychartprice"
 OPEN, CLOSE = "090000", "153000"
+# 정규장 시간이 다른 날 (수능일은 개장·마감이 1시간 늦고, 새해 첫 거래일은 10시 개장). 해마다 확인해 추가한다
+SESSIONS = {"20251113": ("100000", "163000"), "20260102": ("100000", "153000")}
 
 
 def fetch_minutes(kis, date, code):
-    """15:30부터 거꾸로 120행씩 받으며, 그 날짜의 09:00 봉에 닿으면 멈춘다."""
-    day, hour, bars = date.strftime("%Y%m%d"), CLOSE, {}
+    """장 마감 시각부터 거꾸로 120행씩 받으며, 그 날짜의 개장 봉에 닿으면 멈춘다."""
+    day = date.strftime("%Y%m%d")
+    open_t, close_t = SESSIONS.get(day, (OPEN, CLOSE))
+    hour, bars = close_t, {}
     for _ in range(8):
         body = kis.get(PATH, "FHKST03010230", {
             "FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": code,
@@ -33,10 +37,10 @@ def fetch_minutes(kis, date, code):
         for r in page:
             bars[r["stck_cntg_hour"]] = r
         earliest = min(r["stck_cntg_hour"] for r in page)
-        if earliest <= OPEN:
+        if earliest <= open_t:
             break
         hour = (dt.datetime.strptime(earliest, "%H%M%S") - dt.timedelta(minutes=1)).strftime("%H%M%S")
-    return date, code, [r for t, r in sorted(bars.items()) if OPEN <= t <= CLOSE]
+    return date, code, [r for t, r in sorted(bars.items()) if open_t <= t <= close_t]
 
 
 def main():

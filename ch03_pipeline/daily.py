@@ -1,7 +1,8 @@
 """03-2 일봉 수집 — 주권(ST) 종목의 일봉을 기간만큼 모은다. 중단해도 이어서 받는다.
 
-    python -m ch03_pipeline.daily --start 20251001             # 전 종목
+    python -m ch03_pipeline.daily --start 20251001             # 처음 한 번: 전 종목 과거 일봉
     python -m ch03_pipeline.daily --start 20251001 --limit 5   # 앞 5종목만 (모의투자 시험용)
+    python -m ch03_pipeline.daily --update                     # 매일: 마지막 저장일부터 오늘까지
 """
 
 import argparse
@@ -44,18 +45,26 @@ def to_frame(code, rows):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--start", required=True, help="시작일 YYYYMMDD")
+    ap.add_argument("--start", help="시작일 YYYYMMDD (처음 받을 때)")
+    ap.add_argument("--update", action="store_true", help="마지막 저장일부터 오늘까지 전 종목 갱신")
     ap.add_argument("--end", default=dt.date.today().strftime("%Y%m%d"))
     ap.add_argument("--limit", type=int, help="앞에서부터 N종목만")
     args = ap.parse_args()
 
     con, kis = connect(), KIS()
-    codes = [c for (c,) in con.execute("""
-        SELECT code FROM stock_master
-        WHERE group_code = 'ST' AND NOT is_spac
-          AND code NOT IN (SELECT code FROM daily_done)
-        ORDER BY code""").fetchall()][:args.limit]
-    print(f"수집 대상 {len(codes)}종목 ({kis.env})")
+    universe = "SELECT code FROM stock_master WHERE group_code = 'ST' AND NOT is_spac"
+    if args.update:
+        # 완료 표시와 상관없이 전 종목을, 마지막 저장일부터 다시 받는다 (마지막 날은 덮어쓴다)
+        last = con.execute("SELECT max(date) FROM daily_bars").fetchone()[0]
+        args.start = last.strftime("%Y%m%d") if last else args.start
+        codes = [c for (c,) in con.execute(universe + " ORDER BY code").fetchall()]
+    else:
+        codes = [c for (c,) in con.execute(
+            universe + " AND code NOT IN (SELECT code FROM daily_done) ORDER BY code").fetchall()]
+    if not args.start:
+        ap.error("--start 가 필요합니다 (저장된 일봉이 없을 때)")
+    codes = codes[:args.limit]
+    print(f"수집 대상 {len(codes)}종목, {args.start}~{args.end} ({kis.env})")
 
     workers = 8 if kis.env == "real" else 1
     with ThreadPoolExecutor(workers) as ex:
