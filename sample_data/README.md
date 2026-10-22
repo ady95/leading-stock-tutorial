@@ -15,6 +15,7 @@ python -m ch03_pipeline.load_sample
 | `minute_bars.parquet` | 날짜별 정규장 거래대금 상위 100종목의 1분봉 | 2,273,944 | 2026-07-23 ~ 2026-10-21 (60거래일) |
 | `benchmark_daily.parquet` | 시장 기준 ETF(KODEX 200, KODEX 코스닥150) 일봉 | 508 | 2025-10-01 ~ 2026-10-21 |
 | `benchmark_minute.parquet` | 시장 기준 ETF 1분봉 (4장 상대강도) | 45,485 | 2026-07-23 ~ 2026-10-21 |
+| `theme_stock.parquet` | 한국투자증권 테마 사전 (2026-10-23 기준, "신규 상장주" 분류 제외) | 5,106 | — |
 
 - 시세 출처: 한국투자증권 Open API (KRX 시세, 시장 구분 `J`)
 - 열 구성은 `ch03_pipeline/db.py`의 테이블 정의와 같습니다

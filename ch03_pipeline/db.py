@@ -63,6 +63,15 @@ CREATE TABLE IF NOT EXISTS benchmark_done (
     date DATE, code VARCHAR, rows INTEGER,
     PRIMARY KEY (date, code)
 );
+-- 05-1 테마 사전 (오늘 사전 + 날짜별 이력)
+CREATE TABLE IF NOT EXISTS theme_stock (
+    theme_code VARCHAR, theme_name VARCHAR, code VARCHAR,
+    PRIMARY KEY (theme_code, code)
+);
+CREATE TABLE IF NOT EXISTS theme_stock_history (
+    updated DATE, theme_code VARCHAR, theme_name VARCHAR, code VARCHAR,
+    PRIMARY KEY (updated, theme_code, code)
+);
 """
 
 

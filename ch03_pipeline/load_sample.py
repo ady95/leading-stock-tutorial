@@ -10,7 +10,7 @@ from pathlib import Path
 from ch03_pipeline.db import DB_PATH, ROOT, connect
 
 SAMPLE_DIR = ROOT / "sample_data"
-TABLES = ["stock_master", "daily_bars", "minute_bars", "benchmark_daily", "benchmark_minute"]
+TABLES = ["stock_master", "daily_bars", "minute_bars", "benchmark_daily", "benchmark_minute", "theme_stock"]
 
 
 def main():
@@ -24,7 +24,7 @@ def main():
     if existing and not args.replace:
         raise SystemExit(f"{args.db}에 이미 분봉 {existing:,}행이 있습니다. 덮어쓰려면 --replace를 붙이세요.")
 
-    for table in TABLES + ["daily_done", "minute_done", "benchmark_done", "stock_master_history"]:
+    for table in TABLES + ["daily_done", "minute_done", "benchmark_done", "stock_master_history", "theme_stock_history"]:
         con.execute(f"DELETE FROM {table}")
     for table in TABLES:
         path = (SAMPLE_DIR / f"{table}.parquet").as_posix()
@@ -36,6 +36,8 @@ def main():
     con.execute("INSERT INTO benchmark_done SELECT date, code, count(*) FROM benchmark_minute GROUP BY date, code")
     con.execute("""INSERT INTO stock_master_history
         SELECT updated, code, name, market, group_code, is_spac, is_halted FROM stock_master""")
+    con.execute("""INSERT INTO theme_stock_history
+        SELECT (SELECT max(updated) FROM stock_master), theme_code, theme_name, code FROM theme_stock""")
 
     print(con.execute("""
         SELECT 'daily_bars' AS tbl, count(*) AS n_rows, min(date) AS first_day, max(date) AS last_day FROM daily_bars
