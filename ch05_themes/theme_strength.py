@@ -16,18 +16,22 @@ MIN_STRONG = 2         # 강한 종목이 둘 이상이어야 "무리"로 본다
 DEDUP_OVERLAP = 0.5    # 강한 종목이 앞선 테마와 이만큼 겹치면 같은 무리로 보고 건너뛴다
 
 
+def attach_themes(cand, themes):
+    """후보 표에 테마를 붙이고 강한 종목을 표시한다. 한 종목이 여러 테마에 들어갈 수 있다."""
+    m = themes.merge(cand, on="code")
+    m["strong"] = (m.rel_strength >= STRONG_RS) & (m.ret > 0)
+    m["expected_value"] = m.acc_value / m.value_surge     # 평소 t까지 거래대금
+    return m
+
+
 def members_at(con, date, t, snap=None):
-    """t 시점의 후보(04장)에 테마를 붙인다. 한 종목이 여러 테마에 들어갈 수 있다.
+    """t 시점의 후보(04장)에 테마를 붙인다.
 
     snap: 이미 계산한 snapshot()이 있으면 넘겨서 다시 계산하지 않는다 (6장).
     """
     s = snapshot(con, date, t) if snap is None else snap
-    s = s[s.is_candidate]
     themes = con.execute("SELECT theme_code, theme_name, code FROM theme_stock").df()
-    m = themes.merge(s, on="code")
-    m["strong"] = (m.rel_strength >= STRONG_RS) & (m.ret > 0)
-    m["expected_value"] = m.acc_value / m.value_surge     # 평소 t까지 거래대금
-    return m
+    return attach_themes(s[s.is_candidate], themes)
 
 
 def positive_ratio(s):

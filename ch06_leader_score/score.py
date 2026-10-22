@@ -36,33 +36,37 @@ def pct_rank(s, method="average"):
     return s.rank(pct=True, method=method).fillna(0.5)
 
 
-def indicators(con, date, t):
-    """후보별 원지표(raw)를 계산한다."""
-    snap = snapshot(con, date, t)
-    cand = snap[snap.is_candidate].copy()
-    intraday = con.execute(INTRADAY_SQL, {"date": pd.Timestamp(date).date(), "t": t}).df()
-    cand = cand.merge(intraday, on="code")
-
-    # 실시간 매수세: 현재가가 VWAP(당일 거래대금 ÷ 거래량)보다 얼마나 위에 있나
-    cand["vwap"] = cand.acc_value / cand.acc_volume
-    cand["above_vwap"] = cand.price / cand.vwap - 1
-    # 상승 지속 가능성: 당일 고점에서 얼마나 내려왔나 (0이 고점 그대로)
-    cand["from_high"] = cand.price / cand.day_high - 1
-
-    # 테마 주도력: 강한 종목으로 속한 주도 테마(05-3 조건 통과)의 점수 중 가장 높은 값
-    m = ts.members_at(con, date, t, snap=snap)
-    table = ts.theme_table(m)
-    strong = m[m.strong].merge(table[["theme_code", "score"]], on="theme_code")
-    best = strong.sort_values("score", ascending=False).drop_duplicates("code")
-    cand = cand.merge(best[["code", "theme_name", "score"]].rename(columns={"score": "theme_score"}),
-                      on="code", how="left")
-    cand["theme_score"] = cand.theme_score.fillna(0.0)
+def add_intraday(cand):
+    """매수세·지속성 원지표. 필요한 열: price, acc_value, acc_volume, day_high."""
+    cand = cand.copy()
+    cand["vwap"] = cand.acc_value / cand.acc_volume                 # 당일 거래대금 ÷ 거래량
+    cand["above_vwap"] = cand.price / cand.vwap - 1                  # VWAP보다 얼마나 위에 있나
+    cand["from_high"] = cand.price / cand.day_high - 1               # 당일 고점에서 얼마나 내려왔나
     return cand
 
 
-def leader_scores(con, date, t, weights=WEIGHTS):
-    """여섯 지표의 백분위 순위와 Leader Score. 데이터가 없는 지표의 가중치는 나머지에 나눠 준다."""
-    c = indicators(con, date, t)
+def indicators(con, date, t):
+    """DB의 1분봉으로 t 시점 후보의 원지표를 만든다 (6장, 7장 리플레이)."""
+    snap = snapshot(con, date, t)
+    cand = snap[snap.is_candidate]
+    intraday = con.execute(INTRADAY_SQL, {"date": pd.Timestamp(date).date(), "t": t}).df()
+    return add_intraday(cand.merge(intraday, on="code"))
+
+
+def score_frame(cand, themes, weights=WEIGHTS):
+    """원지표가 담긴 후보 표에 테마 주도력과 Leader Score를 붙인다.
+
+    DB(6장)에서 왔든 실시간 API(7장)에서 왔든, 열 이름만 같으면 같은 점수가 나온다.
+    """
+    c = cand.copy()
+    m = ts.attach_themes(c, themes)
+    table = ts.theme_table(m)
+    strong = m[m.strong].merge(table[["theme_code", "score"]], on="theme_code")
+    best = strong.sort_values("score", ascending=False).drop_duplicates("code")
+    c = c.merge(best[["code", "theme_name", "score"]].rename(columns={"score": "theme_score"}),
+                on="code", how="left")
+    c["theme_score"] = c.theme_score.fillna(0.0)
+
     c["s_money"] = (pct_rank(c.value_share) + pct_rank(c.value_surge)) / 2
     c["s_strength"] = pct_rank(c.rel_strength)
     c["s_theme"] = pct_rank(c.theme_score, method="min")   # 주도 테마가 없으면(동점 0) 맨 아래
@@ -75,6 +79,15 @@ def leader_scores(con, date, t, weights=WEIGHTS):
         c[f"w_{k}"] = w / total * c[f"s_{k}"]          # 점수에 대한 기여
     c["leader_score"] = c.filter(like="w_").sum(axis=1)
     return c.sort_values("leader_score", ascending=False).reset_index(drop=True), used
+
+
+def load_themes(con):
+    return con.execute("SELECT theme_code, theme_name, code FROM theme_stock").df()
+
+
+def leader_scores(con, date, t, weights=WEIGHTS):
+    """DB 기준 t 시점의 Leader Score (6장)."""
+    return score_frame(indicators(con, date, t), load_themes(con), weights)
 
 
 def reason(row, used):
