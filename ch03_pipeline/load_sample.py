@@ -10,7 +10,7 @@ from pathlib import Path
 from ch03_pipeline.db import DB_PATH, ROOT, connect
 
 SAMPLE_DIR = ROOT / "sample_data"
-TABLES = ["stock_master", "daily_bars", "minute_bars"]
+TABLES = ["stock_master", "daily_bars", "minute_bars", "benchmark_daily", "benchmark_minute"]
 
 
 def main():
@@ -24,7 +24,7 @@ def main():
     if existing and not args.replace:
         raise SystemExit(f"{args.db}에 이미 분봉 {existing:,}행이 있습니다. 덮어쓰려면 --replace를 붙이세요.")
 
-    for table in TABLES + ["daily_done", "minute_done", "stock_master_history"]:
+    for table in TABLES + ["daily_done", "minute_done", "benchmark_done", "stock_master_history"]:
         con.execute(f"DELETE FROM {table}")
     for table in TABLES:
         path = (SAMPLE_DIR / f"{table}.parquet").as_posix()
@@ -33,6 +33,7 @@ def main():
     # 수집 스크립트가 이어서 받을 수 있도록 완료 표시도 채운다
     con.execute("INSERT INTO daily_done SELECT code, count(*) FROM daily_bars GROUP BY code")
     con.execute("INSERT INTO minute_done SELECT date, code, count(*) FROM minute_bars GROUP BY date, code")
+    con.execute("INSERT INTO benchmark_done SELECT date, code, count(*) FROM benchmark_minute GROUP BY date, code")
     con.execute("""INSERT INTO stock_master_history
         SELECT updated, code, name, market, group_code, is_spac, is_halted FROM stock_master""")
 
