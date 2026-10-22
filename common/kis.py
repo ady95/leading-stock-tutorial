@@ -57,7 +57,8 @@ class KIS:
         self.domain = DOMAINS[self.env]
         self.app_key = app_key or os.environ["KIS_APP_KEY"]
         self.app_secret = app_secret or os.environ["KIS_APP_SECRET"]
-        self.limiter = RateLimiter(RATE_PER_SEC[self.env])
+        # .env의 KIS_RATE_PER_SEC로 초당 호출 수를 낮출 수 있다 (장시간 수집할 때)
+        self.limiter = RateLimiter(float(os.getenv("KIS_RATE_PER_SEC", RATE_PER_SEC[self.env])))
         self.token_path = CACHE_DIR / f"token_{self.env}.json"
         self.token_lock = threading.Lock()
         self.token = None
