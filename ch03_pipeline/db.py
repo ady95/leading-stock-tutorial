@@ -48,6 +48,21 @@ CREATE TABLE IF NOT EXISTS minute_done (
     date DATE, code VARCHAR, rows INTEGER,
     PRIMARY KEY (date, code)
 );
+-- 04-2 상대강도의 기준 (KODEX 200, KODEX 코스닥150). 종목 데이터와 섞이지 않게 따로 둔다
+CREATE TABLE IF NOT EXISTS benchmark_daily (
+    date DATE, code VARCHAR,
+    open BIGINT, high BIGINT, low BIGINT, close BIGINT, volume BIGINT, value BIGINT,
+    PRIMARY KEY (date, code)
+);
+CREATE TABLE IF NOT EXISTS benchmark_minute (
+    date DATE, code VARCHAR, time VARCHAR,
+    open BIGINT, high BIGINT, low BIGINT, close BIGINT, volume BIGINT, acc_value BIGINT,
+    PRIMARY KEY (date, code, time)
+);
+CREATE TABLE IF NOT EXISTS benchmark_done (
+    date DATE, code VARCHAR, rows INTEGER,
+    PRIMARY KEY (date, code)
+);
 """
 
 
