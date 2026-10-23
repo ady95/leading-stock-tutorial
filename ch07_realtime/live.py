@@ -14,6 +14,7 @@
 import argparse
 import datetime as dt
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -202,6 +203,7 @@ def main():
     ap.add_argument("--cycles", type=int, help="이만큼만 돌고 멈춘다")
     ap.add_argument("--db", default=DB_PATH)
     args = ap.parse_args()
+    sys.stdout.reconfigure(line_buffering=True)   # 파일로 출력을 돌려도 주기마다 바로 기록되게
 
     mon = Monitor(connect(args.db, read_only=True), KIS())
     OUT_DIR.mkdir(parents=True, exist_ok=True)
