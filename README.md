@@ -21,7 +21,7 @@
 | `ch06_leader_score/` | 6장 | Leader Score 랭킹, 대장주 TOP 10 일일 리포트 |
 | `ch07_realtime/` | 7장 | 장중 5분 재평가, 대장주 교체 탐지, 알림 |
 | `ch08_lightgbm/` | 8장 | Feature Engineering, LGBMRanker 학습 |
-| `ch09_llm/` | 9장 | 뉴스·공시 수집, LLM 테마 분류 |
+| `ch09_llm/` | 9장 | 뉴스·공시 수집, LLM 분류·근거 검증, 뉴스 특성 결합 |
 | `ch10_vlm/` | 10장 | AI 전용 차트 생성, VLM 판독 |
 | `ch11_backtest/` | 11장 | 시점별 검증, NDCG@K, MFE·MAE, 거래비용 |
 | `ch12_monitor/` | 12장 | Streamlit 대시보드 |

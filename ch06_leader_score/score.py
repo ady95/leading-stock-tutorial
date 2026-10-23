@@ -19,7 +19,7 @@ WEIGHTS = {
     "strength": 0.20,    # 상대 주가 강도
     "theme": 0.20,       # 테마 주도력
     "buying": 0.15,      # 실시간 매수세
-    "news": 0.10,        # 뉴스·공시 영향력 — 9장 전까지 데이터가 없다
+    "news": 0.10,        # 뉴스·공시 영향력 — 후보 표에 news_score 열이 있을 때만 (9장)
     "hold": 0.10,        # 상승 지속 가능성
 }
 LABELS = {"money": "거래대금", "strength": "상대강도", "theme": "테마 주도력",
@@ -72,6 +72,8 @@ def score_frame(cand, themes, weights=WEIGHTS):
     c["s_theme"] = pct_rank(c.theme_score, method="min")   # 주도 테마가 없으면(동점 0) 맨 아래
     c["s_buying"] = pct_rank(c.above_vwap)
     c["s_hold"] = pct_rank(c.from_high)
+    if "news_score" in c.columns:                         # 9장: 뉴스·공시 영향력 (09-5)
+        c["s_news"] = pct_rank(c.news_score, method="min")
 
     used = {k: w for k, w in weights.items() if f"s_{k}" in c.columns}
     total = sum(used.values())
@@ -100,6 +102,8 @@ def reason(row, used):
         "buying": f"VWAP 대비 {row.above_vwap * 100:+.1f}%",
         "hold": f"고점 대비 {row.from_high * 100:+.1f}%",
     }
+    if hasattr(row, "news_score"):
+        parts["news"] = f"호재 뉴스 {row.good_n}건 · 악재 {row.bad_n}건"
     order = sorted(used, key=lambda k: getattr(row, f"w_{k}"), reverse=True)
     return " · ".join(parts[k] for k in order if k in parts)
 
