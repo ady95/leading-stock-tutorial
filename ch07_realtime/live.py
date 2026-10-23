@@ -53,6 +53,14 @@ class Monitor:
         self.theme, self.theme_pending, self.theme_pending_n = None, None, 0
         self.calls = 0
 
+    def is_trading_day(self):
+        """오늘 기준 ETF의 일봉이 있으면 장이 열린 날이다. 공휴일에는 순위 API가 전날 값을 주므로 미리 확인한다."""
+        day = self.today.strftime("%Y%m%d")
+        rows = self.get(Q + "/inquire-daily-itemchartprice", "FHKST03010100", {
+            "FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": BENCHMARKS["KOSPI"], "FID_INPUT_DATE_1": day,
+            "FID_INPUT_DATE_2": day, "FID_PERIOD_DIV_CODE": "D", "FID_ORG_ADJ_PRC": "0"})["output2"]
+        return any(r.get("stck_bsop_date") == day for r in rows)
+
     def get(self, path, tr_id, params):
         self.calls += 1
         return self.kis.get(path, tr_id, params)
@@ -206,6 +214,13 @@ def main():
     sys.stdout.reconfigure(line_buffering=True)   # 파일로 출력을 돌려도 주기마다 바로 기록되게
 
     mon = Monitor(connect(args.db, read_only=True), KIS())
+    # 수능일처럼 10시에 여는 날도 있으므로, 10:10까지는 5분마다 다시 확인한다
+    while not mon.is_trading_day():
+        if dt.datetime.now().strftime("%H%M%S") >= "101000":
+            print(f"{mon.today}: 오늘은 장이 열리지 않았습니다 (휴장일). 종료합니다.")
+            return
+        print(f"{dt.datetime.now():%H:%M} 아직 개장 전입니다. 5분 뒤 다시 확인합니다.")
+        time.sleep(300)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     log = OUT_DIR / f"{mon.today}.jsonl"
     n = 0
