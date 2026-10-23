@@ -15,6 +15,7 @@ from common.kis import KIS
 
 PATH = "/uapi/domestic-stock/v1/quotations/inquire-time-dailychartprice"
 OPEN, CLOSE = "090000", "153000"
+SAFE_AFTER = "154000"   # 오늘 분봉은 장이 끝난 뒤에만 받는다. 장중에 받으면 15:30 봉이 없는 채로 "완료" 표시가 남는다
 # 정규장 시간이 다른 날 (수능일은 개장·마감이 1시간 늦고, 새해 첫 거래일은 10시 개장). 해마다 확인해 추가한다
 SESSIONS = {"20251113": ("100000", "163000"), "20260102": ("100000", "153000")}
 
@@ -60,6 +61,8 @@ def main():
         LEFT JOIN minute_done d USING (date, code)
         WHERE r.rk <= ? AND d.code IS NULL AND r.date IN (SELECT date FROM days)
         ORDER BY r.date, r.rk""", [args.days or 100000, args.top]).fetchall()
+    if dt.datetime.now().strftime("%H%M%S") < SAFE_AFTER:
+        targets = [x for x in targets if x[0] < dt.date.today()]
     print(f"수집 대상 {len(targets)}건 (날짜 × 종목, {kis.env})")
 
     workers = 8 if kis.env == "real" else 1

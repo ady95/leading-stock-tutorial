@@ -11,7 +11,7 @@ import pandas as pd
 
 from ch03_pipeline.daily import fetch_daily, to_frame
 from ch03_pipeline.db import connect
-from ch03_pipeline.minutes import fetch_minutes
+from ch03_pipeline.minutes import SAFE_AFTER, fetch_minutes
 from common.kis import KIS
 
 BENCHMARKS = {"KOSPI": "069500", "KOSDAQ": "229200"}   # KODEX 200, KODEX 코스닥150
@@ -37,6 +37,8 @@ def main():
         days = [d for (d,) in con.execute("""
             SELECT DISTINCT date FROM daily_bars
             WHERE date NOT IN (SELECT date FROM benchmark_done WHERE code = ?) ORDER BY date""", [code]).fetchall()]
+        if dt.datetime.now().strftime("%H%M%S") < SAFE_AFTER:
+            days = [d for d in days if d < dt.date.today()]       # 오늘 분봉은 장이 끝난 뒤에
         for day in days:
             _, _, bars = fetch_minutes(kis, day, code)
             if bars:
