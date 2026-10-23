@@ -2,7 +2,7 @@
 
     python -m ch03_pipeline.daily --start 20251001             # 처음 한 번: 전 종목 과거 일봉
     python -m ch03_pipeline.daily --start 20251001 --limit 5   # 앞 5종목만 (모의투자 시험용)
-    python -m ch03_pipeline.daily --update                     # 매일: 마지막 저장일부터 오늘까지
+    python -m ch03_pipeline.daily --update                     # 매일: 최근 10일을 다시 받아 덮어쓴다
 """
 
 import argparse
@@ -15,6 +15,8 @@ from ch03_pipeline.db import connect
 from common.kis import KIS
 
 PATH = "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"
+# 장 마감 당일 저녁에 받은 일봉은 종가·거래대금이 확정 전이다(07-4 실측). --update는 최근 며칠을 다시 받아 덮어쓴다
+REFETCH_DAYS = 10
 
 
 def fetch_daily(kis, code, start, end):
@@ -54,9 +56,10 @@ def main():
     con, kis = connect(), KIS()
     universe = "SELECT code FROM stock_master WHERE group_code = 'ST' AND NOT is_spac"
     if args.update:
-        # 완료 표시와 상관없이 전 종목을, 마지막 저장일부터 다시 받는다 (마지막 날은 덮어쓴다)
+        # 완료 표시와 상관없이 전 종목을, 마지막 저장일보다 REFETCH_DAYS일 앞부터 다시 받아 덮어쓴다
         last = con.execute("SELECT max(date) FROM daily_bars").fetchone()[0]
-        args.start = last.strftime("%Y%m%d") if last else args.start
+        if last:
+            args.start = (last - dt.timedelta(days=REFETCH_DAYS)).strftime("%Y%m%d")
         codes = [c for (c,) in con.execute(universe + " ORDER BY code").fetchall()]
     else:
         codes = [c for (c,) in con.execute(
