@@ -52,7 +52,7 @@ def theme_table(m):
     t = t[(t.n_obs >= MIN_OBS) & (t.n_strong >= MIN_STRONG)].copy()
     for col in ("n_strong", "breadth", "med_rs", "value_surge"):
         t["rank_" + col] = t[col].rank(pct=True)
-    t["score"] = t.filter(like="rank_").mean(axis=1)
+    t["score"] = t[["rank_" + col for col in ("n_strong", "breadth", "med_rs", "value_surge")]].mean(axis=1)
     return t.sort_values("score", ascending=False).reset_index(drop=True)
 
 

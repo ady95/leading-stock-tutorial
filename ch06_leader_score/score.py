@@ -77,7 +77,7 @@ def score_frame(cand, themes, weights=WEIGHTS):
     total = sum(used.values())
     for k, w in used.items():
         c[f"w_{k}"] = w / total * c[f"s_{k}"]          # 점수에 대한 기여
-    c["leader_score"] = c.filter(like="w_").sum(axis=1)
+    c["leader_score"] = c[[f"w_{k}" for k in used]].sum(axis=1)   # 기여 열을 이름으로 정확히 더한다
     return c.sort_values("leader_score", ascending=False).reset_index(drop=True), used
 
 
