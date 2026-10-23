@@ -21,6 +21,7 @@ OUT = ROOT / "data" / "ml_dataset.parquet"
 SAMPLE_EVERY = 3            # 5분 grid에서 3칸마다 = 15분 간격으로 판단 시점을 뽑는다
 FIRST_STEP = 5              # 개장 30분 뒤(09:30)부터 — 앞의 30분은 30분 변화량을 잴 수 없다
 HORIZONS = {"fwd30": 6, "fwd60": 12}   # 5분 grid 기준 몇 칸 뒤인가
+PERSIST_DAYS = 5            # 지난 5거래일 내내 분봉 수집 대상이었던 종목 = 오늘 포함 여부가 미래와 거의 무관
 
 FEATURES = [
     "ret", "rel_strength", "bench_ret", "value_share", "value_surge", "log_value",
@@ -49,6 +50,21 @@ def add_labels(x):
         bench = (1 + g.bench_ret.shift(-k)) / (1 + x.bench_ret) - 1
         x[name] = stock - bench
     return x
+
+
+def add_persistent(con, df):
+    """선택 편향 점검용 표시 (08-5). 분봉 수집 대상은 그날 장 마감 후 거래대금으로 골랐으므로(03-4 규칙 4),
+    지난 PERSIST_DAYS거래일 내내 수집 대상이었던 종목만 '포함 여부가 미래와 무관한' 종목으로 본다."""
+    done = con.execute("SELECT date, code FROM minute_done WHERE rows > 0").df()
+    done["date"] = done.date.astype(str)
+    days = sorted(done.date.unique())
+    members = done.groupby("date").code.apply(set).to_dict()
+    persist = {}
+    for i, d in enumerate(days):
+        if i >= PERSIST_DAYS:
+            persist[d] = set.intersection(*(members[days[j]] for j in range(i - PERSIST_DAYS, i)))
+    df["persistent"] = [c in persist.get(d, set()) for d, c in zip(df.date, df.code)]
+    return df
 
 
 def build_day(con, date, themes):
@@ -87,10 +103,11 @@ def main():
             frames.append(day)
         if i % 25 == 0 or i == len(dates):
             print(f"  {i}/{len(dates)} {d} ({time.time() - started:.0f}초)", flush=True)
-    df = pd.concat(frames, ignore_index=True)
+    df = add_persistent(con, pd.concat(frames, ignore_index=True))
     OUT.parent.mkdir(exist_ok=True)
     df.to_parquet(OUT)
-    print(f"{len(df):,}행, {df.date.nunique()}일, 판단 시점 {df.groupby('date').t.nunique().median():.0f}개/일 → {OUT.relative_to(ROOT)}")
+    print(f"{len(df):,}행, {df.date.nunique()}일, 판단 시점 {df.groupby('date').t.nunique().median():.0f}개/일, "
+          f"5일 연속 수집 종목 {df.persistent.mean():.1%} → {OUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
