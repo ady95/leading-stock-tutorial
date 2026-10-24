@@ -18,6 +18,7 @@ from common.kis import KIS, KISError
 
 PATH = "/uapi/domestic-stock/v1/quotations/news-title"
 CLOSE = "153000"
+SAFE_AFTER = "154000"   # 오늘 뉴스는 장이 끝난 뒤에만 받는다. 장중에 받으면 15:30까지의 뉴스가 덜 받힌 채 "완료"로 남는다
 MAX_PAGES = 15          # 1회 40건 × 15쪽 = 하루 600건까지. 1년 동안 이 상한에 걸린 날은 삼성전자의 몇 날뿐이었다
 
 SCHEMA = """
@@ -112,6 +113,8 @@ def main():
         WHERE r.rk <= ? AND n.code IS NULL AND d.prev_date IS NOT NULL
           AND r.date IN (SELECT date FROM recent)
         ORDER BY r.date, r.rk""", [args.days or 100000, args.top]).fetchall()
+    if dt.datetime.now().strftime("%H%M%S") < SAFE_AFTER:
+        targets = [x for x in targets if x[0] < dt.date.today()]
     print(f"수집 대상 {len(targets)}건 (날짜 × 종목, {kis.env})")
 
     workers = 8 if kis.env == "real" else 1
