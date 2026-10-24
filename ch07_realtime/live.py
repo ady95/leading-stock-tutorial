@@ -35,6 +35,12 @@ CONFIRM = 2              # 새 1위가 이만큼 연속으로 1위여야 "교체
 OUT_DIR = ROOT / "outputs" / "live"
 
 
+# 기록할 열. w_로 시작하는 지표별 기여(06-3)도 함께 남겨 대시보드(12장)에서 선정 근거를 그린다
+TOP_COLUMNS = ["code", "name", "market", "leader_score", "ret", "rel_strength", "above_vwap", "from_high",
+               "value_share", "value_surge", "acc_value", "theme_name", "theme_score", "cttr", "price",
+               "kis_vwap", "vwap"]
+
+
 class Monitor:
     def __init__(self, con, kis, top=10, strength_top=10):
         self.kis, self.top, self.strength_top = kis, top, strength_top
@@ -200,8 +206,7 @@ class Monitor:
                 "base_mismatch": int(x.base_mismatch.sum()), "leader": self.name(self.leader),
                 "top_theme": theme_top, "confirmed_theme": self.theme,
                 "calls": self.calls - calls0, "seconds": round(time.time() - started, 1), "events": ev,
-                "top": s.head(self.top)[["code", "name", "leader_score", "ret", "rel_strength", "above_vwap",
-                                         "from_high", "theme_name", "cttr", "price", "kis_vwap", "vwap"]]}
+                "top": s.head(self.top)[TOP_COLUMNS + [c for c in s.columns if c.startswith("w_")]]}
 
 
 def main():
