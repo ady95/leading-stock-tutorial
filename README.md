@@ -24,7 +24,7 @@
 | `ch09_llm/` | 9장 | 뉴스·공시 수집, LLM 분류·근거 검증, 뉴스 특성 결합 |
 | `ch10_vlm/` | 10장 | AI 전용 차트 생성, VLM 판독·일관성, 기준 점수 재정렬 비교 |
 | `ch11_backtest/` | 11장 | 시점별 검증, NDCG@K, MFE·MAE, 거래비용, 누수 점검, 6개 방식 비교 |
-| `ch12_monitor/` | 12장 | Streamlit 대시보드 |
+| `ch12_monitor/` | 12장 | Streamlit 대시보드, 장 마감 리포트, 가상 장부 |
 | `sample_data/` | 전체 | 재현용 샘플 데이터 |
 
 ## 시작하기
