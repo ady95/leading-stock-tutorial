@@ -37,8 +37,8 @@ OUT_DIR = ROOT / "outputs" / "live"
 
 # 기록할 열. w_로 시작하는 지표별 기여(06-3)도 함께 남겨 대시보드(12장)에서 선정 근거를 그린다
 TOP_COLUMNS = ["code", "name", "market", "leader_score", "ret", "rel_strength", "above_vwap", "from_high",
-               "value_share", "value_surge", "acc_value", "theme_name", "theme_score", "cttr", "price",
-               "kis_vwap", "vwap"]
+               "value_share", "value_surge", "acc_value", "ret_rank", "theme_name", "theme_score", "cttr",
+               "price", "kis_vwap", "vwap"]
 
 
 class Monitor:
@@ -196,6 +196,7 @@ class Monitor:
         x, bench_ret, frac_t = self.measure(codes, t)
         cand = x[x.is_candidate]
         s, _ = score_frame(cand, self.themes)
+        s["ret_rank"] = s.ret.rank(ascending=False, method="min")    # 후보 중 상승률 순위 (12장 주의 표시)
         top_theme = ts.top_themes(ts.attach_themes(cand, self.themes), 1)
         theme_top = top_theme.theme_name.iloc[0] if len(top_theme) else None
         cttr = self.strength(list(s.code.head(self.strength_top)))
