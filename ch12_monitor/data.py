@@ -33,6 +33,9 @@ def from_live(date):
     rows, meta = [], {}
     for line in path.read_text(encoding="utf-8").splitlines():
         rec = json.loads(line)
+        if "top" not in rec:          # 실패한 주기의 기록 (07-5): {"t": ..., "error": ...}
+            meta.setdefault("errors", []).append(rec)
+            continue
         for i, x in enumerate(rec["top"], 1):
             rows.append({"t": rec["t"], "rank": i, **x})
         meta[rec["t"]] = {k: rec.get(k) for k in ("bench", "events", "candidates", "leader", "top_theme", "confirmed_theme")}

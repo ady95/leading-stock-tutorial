@@ -232,8 +232,16 @@ def main():
     n = 0
     while dt.datetime.now().strftime("%H%M%S") < args.until and (args.cycles is None or n < args.cycles):
         start = time.time()
-        r = mon.cycle()
         n += 1
+        try:
+            r = mon.cycle()
+        except Exception as e:     # 네트워크·토큰 문제 등으로 한 주기가 실패해도 그날 모니터는 계속 돈다
+            print(f"\n[{dt.datetime.now():%H:%M:%S}] 이번 주기 실패, 다음 주기에 다시 시도: {type(e).__name__} {e}")
+            with log.open("a", encoding="utf-8") as f:
+                f.write(json.dumps({"t": dt.datetime.now().strftime("%H%M%S"), "error": f"{type(e).__name__} {e}"},
+                                   ensure_ascii=False) + "\n")
+            time.sleep(max(0, args.interval - (time.time() - start)))
+            continue
         print(f"\n[{r['t'][:2]}:{r['t'][2:4]}:{r['t'][4:]}] 풀 {r['pool']} · 후보 {r['candidates']} · "
               f"API {r['calls']}회 · {r['seconds']}초 · KOSPI {r['bench']['KOSPI'] * 100:+.2f}% "
               f"KOSDAQ {r['bench']['KOSDAQ'] * 100:+.2f}%")

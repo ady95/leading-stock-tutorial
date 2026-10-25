@@ -26,6 +26,7 @@ DOMAINS = {
 }
 # 초당 호출 수. 실전은 한도(초당 20건)보다 여유 있게, 모의투자는 1초 1건에서만 오류가 없었다
 RATE_PER_SEC = {"real": 15, "paper": 1}
+TOKEN_RETRIES = 3     # 토큰 발급 실패 시 시도 횟수 (사이에 61초씩 기다린다)
 
 
 class KISError(Exception):
@@ -76,18 +77,31 @@ class KIS:
                 if cached["expires_at"] > time.time() + 600:
                     self.token, self.token_exp = cached["access_token"], cached["expires_at"]
                     return self.token
-            res = requests.post(self.domain + "/oauth2/tokenP", timeout=15, json={
-                "grant_type": "client_credentials",
-                "appkey": self.app_key, "appsecret": self.app_secret})
-            body = res.json()
-            if "access_token" not in body:
-                raise KISError(body.get("error_code", res.status_code), body.get("error_description", ""))
+            body = self._issue_token()
             self.token = body["access_token"]
             self.token_exp = time.time() + int(body["expires_in"])
             CACHE_DIR.mkdir(exist_ok=True)
             self.token_path.write_text(json.dumps(
                 {"access_token": self.token, "expires_at": self.token_exp}))
             return self.token
+
+    def _issue_token(self, retries=TOKEN_RETRIES):
+        """토큰을 새로 발급한다. 발급은 1분에 1번만 되므로(EGW00133) 실패하면 1분 넘게 기다렸다가 다시 시도한다.
+        같은 앱키를 쓰는 다른 프로그램이 방금 발급했거나, 네트워크가 잠깐 끊긴 경우를 견디기 위해서다."""
+        for attempt in range(retries):
+            try:
+                res = requests.post(self.domain + "/oauth2/tokenP", timeout=15, json={
+                    "grant_type": "client_credentials",
+                    "appkey": self.app_key, "appsecret": self.app_secret})
+                body = res.json()
+            except (requests.RequestException, ValueError) as e:
+                body = {"error_code": "NETWORK", "error_description": type(e).__name__}
+            if "access_token" in body:
+                return body
+            code = body.get("error_code", "")
+            if code not in ("EGW00133", "NETWORK") or attempt == retries - 1:
+                raise KISError(code, body.get("error_description", ""))
+            time.sleep(61)
 
     def _drop_token(self):
         with self.token_lock:

@@ -81,6 +81,8 @@ if not following:
 def main_view():
     df, meta = load_day(mode, date)                # 실시간 기록은 다시 그릴 때마다 파일을 새로 읽는다
     t = max(df.t) if following else chosen
+    if meta.get("errors"):                         # 장중 모니터가 실패하고 건너뛴 주기 (07-5)
+        st.sidebar.warning(f"실패한 주기 {len(meta['errors'])}번: 마지막 {meta['errors'][-1]['error'][:80]}")
     now = df[df.t == t].sort_values("rank")
     st.title(f"AI 대장주 모니터 — {date} {hhmm(t)}")
     st.caption("연구·교육 목적의 규칙 기반 점수입니다. 투자 권유가 아니며, 11장에서 이 점수로 비용을 넘는 성과는 확인되지 않았습니다.")
