@@ -1,6 +1,7 @@
 """10-1·10-2 사람용 차트와 AI 전용 차트 — 판단 시각 t까지의 1분봉으로 그린다.
 
     python -m ch10_vlm.chart --date 2026-10-21 --time 103000 --code 005930     # outputs/charts/에 두 장
+    python -m ch10_vlm.chart --date 2026-10-21 --time 103000                   # 그 시각 Leader Score 1위
 """
 
 import argparse
@@ -136,19 +137,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--date", required=True)
     ap.add_argument("--time", default="103000")
-    ap.add_argument("--code", required=True)
+    ap.add_argument("--code", help="생략하면 그 시각 Leader Score 1위 종목")
     ap.add_argument("--db", default=DB_PATH)
     args = ap.parse_args()
 
-    from ch10_vlm.cases import theme_members                 # 6장 점수가 고른 주도 테마의 구성 종목
+    from ch10_vlm.cases import pick_stock                    # 6장 점수가 고른 주도 테마의 구성 종목도 함께
     con = connect(args.db, read_only=True)
-    market = con.execute("SELECT market FROM stock_master WHERE code = ?", [args.code]).fetchone()[0]
-    members = theme_members(con, args.date, args.time).get(args.code, [])
-    s, bench, theme, prev = load(con, args.date, args.time, args.code, market, members)
+    code, market, members = pick_stock(con, args.date, args.time, args.code)
+    s, bench, theme, prev = load(con, args.date, args.time, code, market, members)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    stem = f"{args.date}_{args.time}_{args.code}"
+    stem = f"{args.date}_{args.time}_{code}"
     (OUT_DIR / f"{stem}_ai.png").write_bytes(ai_chart(s, bench, theme, args.time))
-    (OUT_DIR / f"{stem}_human.png").write_bytes(human_chart(s, args.code, prev))
+    (OUT_DIR / f"{stem}_human.png").write_bytes(human_chart(s, code, prev))
     print(f"{OUT_DIR / stem}_ai.png, _human.png (테마 구성 {len(members)}종목)")
 
 

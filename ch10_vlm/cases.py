@@ -19,3 +19,18 @@ def theme_members(con, date, t, scores=None):
         others = [c for c in by_theme.get(r.theme_name, []) if c != r.code]
         out[r.code] = sorted(others, key=order.get)[:MAX_MEMBERS]
     return out
+
+
+def pick_stock(con, date, t, code=None):
+    """(종목코드, 시장, 테마 구성 종목). 종목코드를 주지 않으면 그 시각 Leader Score 1위를 고른다."""
+    scores, _ = leader_scores(con, date, t)
+    if code is None:
+        code = scores.code.iloc[0]
+    market = con.execute("SELECT market FROM stock_master WHERE code = ?", [code]).fetchone()[0]
+    has_bars = con.execute("SELECT count(*) FROM minute_bars WHERE date = ? AND code = ? AND time < ?",
+                           [date, code, t]).fetchone()[0]
+    if not has_bars:
+        raise SystemExit(f"{date} {code}의 {t[:2]}:{t[2:4]} 이전 1분봉이 DB에 없습니다. "
+                         "샘플 데이터는 날짜별 거래대금 상위 100종목만 담고 있으니, --code를 빼고 그 시각 1위 종목으로 해 보세요")
+    return code, market, theme_members(con, date, t, scores).get(code, [])
+
