@@ -25,6 +25,7 @@ CACHE = ROOT / "outputs" / "vlm_scores.parquet"
 
 def score_charts(con, groups, model=None, workers=8):
     """그룹(날짜·시각)마다 차트를 그리고 VLM 점수를 받는다. 이미 받은 것은 건너뛴다."""
+    CACHE.parent.mkdir(parents=True, exist_ok=True)      # 새로 클론한 저장소에는 outputs/가 없다
     done = pd.read_parquet(CACHE) if CACHE.exists() else pd.DataFrame(columns=["date", "t", "code"])
     have = set(zip(done.date, done.t, done.code))
     rows = []

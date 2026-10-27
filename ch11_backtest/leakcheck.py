@@ -92,7 +92,7 @@ def check_theme_snapshot(con, ml):
 def check_selection(ml):
     """8. 분봉 수집 대상 선택 편향 (03-4 규칙 4, 08-5): 5일 연속 수집 종목 비율."""
     report("분봉 수집 대상 선택 편향", "주의",
-           f"그날 장 마감 후 거래대금 상위 300만 수집. 5일 연속 수집 종목 {ml.persistent.mean():.1%} — 두 범위로 함께 평가할 것")
+           f"그날 장 마감 후 거래대금 상위 종목만 수집. 5일 연속 수집 종목 {ml.persistent.mean():.1%} — 두 범위로 함께 평가할 것")
 
 
 def check_survivor(con):

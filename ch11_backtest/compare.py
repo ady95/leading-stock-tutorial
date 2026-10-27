@@ -116,6 +116,7 @@ def main():
         print()
     print("[달별 30분 상대수익률 (후보 30 전체)]")
     print(by_month(df).to_string(float_format=lambda v: f"{v:+.3%}"))
+    (ROOT / "outputs").mkdir(exist_ok=True)
     df.to_parquet(ROOT / "outputs" / ("backtest_all_times.parquet" if args.all_times else "backtest.parquet"))
 
 

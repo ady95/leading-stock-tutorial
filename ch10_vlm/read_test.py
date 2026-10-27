@@ -79,6 +79,7 @@ def main():
     with ThreadPoolExecutor(6) as ex:
         rows = [x for out in ex.map(run, jobs) for x in out]
     df = pd.DataFrame(rows)
+    (ROOT / "outputs").mkdir(exist_ok=True)
     df.to_parquet(ROOT / "outputs" / "read_test.parquet")
     summary = df.groupby("style").apply(lambda g: pd.Series({
         "등락률 오차(%p, 중앙값)": (g.now_ret - g.true_now_ret).abs().median(),
