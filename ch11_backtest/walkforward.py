@@ -1,9 +1,10 @@
 """11-1 시점별 검증(Walk-forward) — 시험 달마다 그 앞의 기간으로 다시 학습한다.
 
-    python -m ch11_backtest.walkforward      # data/wf_predictions.parquet
+    python -m ch11_backtest.walkforward                              # data/wf_predictions.parquet
+    python -m ch11_backtest.walkforward --months 2026-09,2026-10     # 샘플 데이터(2026-07-23 ~ 10-21)
 
 데이터: 09-5의 학습 데이터 (Leader Score 상위 30 후보, 2026-04-01 ~, 뉴스·LLM 특성 포함).
-시험 달 M: 학습 = 2026-04-01 ~ (M−2달 말), 검증 = M−1달 (조기 종료), 시험 = M.
+시험 달 M: 학습 = 데이터 첫날 ~ (M−2달 말), 검증 = M−1달 (조기 종료), 시험 = M.
 LightGBM은 시드마다 결과가 흔들리므로(09-5), 시드 5개의 그룹 내 순위를 평균한다.
 """
 
@@ -46,12 +47,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default=NEWS_DATASET)
     ap.add_argument("--label", default="fwd30")
+    ap.add_argument("--months", default=",".join(TEST_MONTHS), help="시험 달 (쉼표로 구분, 예: 2026-09,2026-10)")
     args = ap.parse_args()
+    months = args.months.split(",")
 
     df = pd.read_parquet(args.data).dropna(subset=[args.label])
     df = add_grade(df, args.label).sort_values(["date", "t", "code"]).reset_index(drop=True)
     out = []
-    for m, train, valid, test in folds(df):
+    for m, train, valid, test in folds(df, months):
+        if train.empty or valid.empty or test.empty:
+            raise SystemExit(f"{m}: 학습·검증·시험 중 빈 구간이 있습니다. --months를 데이터 기간에 맞게 주세요")
         res = test[["date", "t", "code"]].assign(month=m)
         for name, cols in MODELS.items():
             preds, iters = zip(*(fit_predict(train, valid, test, cols, s) for s in SEEDS))

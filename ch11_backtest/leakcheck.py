@@ -16,7 +16,7 @@ from ch08_lightgbm.dataset import OUT as ML_DATASET
 from ch09_llm.dataset import OUT as NEWS_DATASET
 from ch09_llm.features import LLM_FEATURES, NEWS_FEATURES, add_news_features
 from ch11_backtest.outcome import add_outcome
-from ch11_backtest.walkforward import folds
+from ch11_backtest.walkforward import TEST_MONTHS, folds
 
 LABELS = {"fwd30", "fwd60", "grade", "ret30", "mfe30", "mae30", "exit_price"}
 results = []
@@ -74,9 +74,10 @@ def check_news_time(con, news):
     report("뉴스 수 재계산 (t 미만)", "통과" if same == 1 else "실패", f"300개 표본 중 같은 것 {same:.0%}")
 
 
-def check_split(news):
+def check_split(news, months):
     """6. 학습·검증·시험 기간이 겹치지 않고 시간 순서인가 (11-1)."""
-    ok = all(tr.date.max() < va.date.min() and va.date.max() < te.date.min() for _, tr, va, te in folds(news))
+    ok = all(tr.date.max() < va.date.min() and va.date.max() < te.date.min()
+             for _, tr, va, te in folds(news, months))
     report("시점별 검증의 기간 순서", "통과" if ok else "실패", "모든 묶음에서 학습 < 검증 < 시험")
 
 
@@ -104,6 +105,7 @@ def check_survivor(con):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default=DB_PATH)
+    ap.add_argument("--months", default=",".join(TEST_MONTHS), help="11-1의 시험 달과 같게")
     args = ap.parse_args()
     con = connect(args.db, read_only=True)
     ml = pd.read_parquet(ML_DATASET)
@@ -114,7 +116,7 @@ def main():
     check_label_correlation(ml)
     check_daily_final(con)
     check_news_time(con, news)
-    check_split(news)
+    check_split(news, args.months.split(","))
     check_theme_snapshot(con, ml)
     check_selection(ml)
     check_survivor(con)

@@ -2,6 +2,7 @@
 
     python -m ch11_backtest.walkforward      # 먼저 시점별 검증 예측을 만든다
     python -m ch11_backtest.compare          # VLM 판단은 outputs/vlm_scores.parquet에 쌓인다 (10-4와 공유)
+    python -m ch11_backtest.compare --all-times      # VLM 없이 (비용 없음)
 
 방식: 상승률, 거래대금, Leader Score, LightGBM, LightGBM + LLM, LightGBM + VLM(LightGBM 상위 10을 VLM 점수로 재정렬)
 """
@@ -80,6 +81,7 @@ def by_month(df):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--all-times", action="store_true", help="VLM 없이 하루 24개 시각 전체로 비교")
+    ap.add_argument("--days", type=int, help="시험 기간의 앞 N일만 (VLM 비용을 줄일 때)")
     ap.add_argument("--model")
     ap.add_argument("--db", default=DB_PATH)
     args = ap.parse_args()
@@ -89,6 +91,8 @@ def main():
     df = add_grade(df, "fwd30").merge(pred, on=["date", "t", "code"])           # 시험 달(7~10월)만 남는다
     if not args.all_times:
         df = df[df.t.isin(TIMES)]
+    if args.days:
+        df = df[df.date.isin(sorted(df.date.unique())[:args.days])]
     con = connect(args.db, read_only=True)
     df = add_outcome(con, df)
     df["cost"] = df.entry.map(round_trip_cost)
