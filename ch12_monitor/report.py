@@ -3,9 +3,11 @@
 장이 끝나고 그날 분봉을 모은 뒤(03-2, 매일 18:30) 실행한다.
 
     python -m ch12_monitor.report --date 2026-10-21      # outputs/reports/2026-10-21_monitor.md
+    python -m ch12_monitor.report                        # 오늘
 """
 
 import argparse
+import datetime as dt
 
 from ch03_pipeline.db import DB_PATH, ROOT, connect
 from ch04_candidates.benchmark import BENCHMARKS
@@ -81,10 +83,13 @@ def build(con, date):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--date", required=True)
+    ap.add_argument("--date", default=dt.date.today().isoformat(), help="생략하면 오늘")
     ap.add_argument("--db", default=DB_PATH)
     args = ap.parse_args()
-    text = build(connect(args.db, read_only=True), args.date)
+    con = connect(args.db, read_only=True)
+    if not con.execute("SELECT count(*) FROM minute_bars WHERE date = ?", [args.date]).fetchone()[0]:
+        raise SystemExit(f"{args.date}의 분봉이 없습니다. 휴장일이거나 아직 수집 전입니다 (03-2)")
+    text = build(con, args.date)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     path = OUT_DIR / f"{args.date}_monitor.md"
     path.write_text(text, encoding="utf-8")
