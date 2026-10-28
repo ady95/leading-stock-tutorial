@@ -31,15 +31,18 @@ def own_titles(con, end, window=WINDOW):
 
 
 def theme_links(own, themes):
-    """(종목, 테마)마다 서로 다른 제목 수. 사전에 있는 연결인지 함께 표시한다."""
+    """(종목, 테마)마다 서로 다른 제목 수. 사전과 비교해 셋 중 하나로 나눈다.
+    LLM이 새 테마 칸에 사전의 테마 이름을 쓰기도 하므로, 어느 칸에 썼는지가 아니라 사전으로 판단한다."""
     known = own.explode("themes").dropna(subset=["themes"]).rename(columns={"themes": "theme_name"})
     new = own[own.new_theme != ""].copy()
     new["theme_name"] = new.new_theme
-    links = pd.concat([known.assign(source="사전 테마"), new.assign(source="새 테마")])
-    links = (links.groupby(["code", "theme_name", "source"]).title.nunique()
+    links = (pd.concat([known, new]).groupby(["code", "theme_name"]).title.nunique()
              .rename("titles").reset_index())
     in_dict = set(zip(themes.theme_name, themes.code))
+    names = set(themes.theme_name)
     links["in_dict"] = [(t, c) in in_dict for t, c in zip(links.theme_name, links.code)]
+    links["source"] = ["사전에 있음" if d else "사전 테마의 새 종목" if t in names else "새 테마"
+                       for t, d in zip(links.theme_name, links.in_dict)]
     return links.sort_values("titles", ascending=False)
 
 
@@ -67,9 +70,9 @@ def main():
     links = theme_links(own, themes)
     strong = links[links.titles >= MIN_TITLES]
     print(f"{end} 기준 최근 {WINDOW}거래일: 주인공인 짝 {len(own):,}개 (제목 {own.title.nunique():,}개, 종목 {own.code.nunique():,}개)")
-    print(f"제목 {MIN_TITLES}개 이상 연결 {len(strong):,}개: 사전에 있음 {strong.in_dict.sum():,}, "
-          f"사전 테마의 새 종목 {((~strong.in_dict) & (strong.source == '사전 테마')).sum():,}, "
-          f"새 테마 {(strong.source == '새 테마').sum():,}")
+    n = strong.source.value_counts()
+    print(f"제목 {MIN_TITLES}개 이상 연결 {len(strong):,}개: " +
+          ", ".join(f"{k} {n.get(k, 0):,}" for k in ("사전에 있음", "사전 테마의 새 종목", "새 테마")))
     for _, r in strong[~strong.in_dict].head(15).iterrows():
         print(f"  {names.get(r.code, r.code)} — {r.theme_name} ({r.source}, 제목 {r.titles}개)")
     ext = extended_themes(themes, links)

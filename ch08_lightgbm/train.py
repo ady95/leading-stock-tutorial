@@ -9,6 +9,7 @@
 """
 
 import argparse
+import json
 
 import lightgbm as lgb
 import numpy as np
@@ -73,6 +74,9 @@ def main():
     test = df[df.date > args.valid_end].copy()
     print(f"학습 {train.date.nunique()}일 {len(train):,}행 / 검증 {valid.date.nunique()}일 / 시험 {test.date.nunique()}일 "
           f"({test.date.min()} ~ {test.date.max()}), 특성 {len(FEATURES)}개, 정답 {args.label}")
+    if train.empty or valid.empty or test.empty:
+        raise SystemExit(f"학습·검증·시험 중 빈 구간이 있습니다 (데이터 {df.date.min()} ~ {df.date.max()}). "
+                         "샘플 데이터(03-5)라면 --train-end 2026-09-15 --valid-end 2026-09-30 을 붙이세요")
 
     model = lgb.LGBMRanker(**PARAMS)
     model.fit(train[FEATURES], train.grade, group=groups(train),
@@ -82,7 +86,7 @@ def main():
           f"{model.best_score_['valid_0'][f'ndcg@{TOP_K}']:.4f}\n")
 
     test["pred"] = model.predict(test[FEATURES], num_iteration=model.best_iteration_)
-    # 전체 후보와, 선택 편향을 걷어 낸 "5일 연속 수집 종목"을 함께 평가한다 (08-5)
+    # 전체 후보와, 선택 편향의 영향을 줄인 "5일 연속 수집 종목"을 함께 평가한다 (08-5)
     for scope, part in (("전체 후보", test), ("5일 연속 수집 종목 — 선택 편향 점검", test[test.persistent])):
         table, by_day = evaluate(part, args.label)
         print(f"[시험 기간 {scope}: 그룹별 TOP {TOP_K}의 이후 수익률 (시장 대비)]")
@@ -95,7 +99,27 @@ def main():
     imp = pd.Series(model.booster_.feature_importance("gain"), index=FEATURES).sort_values(ascending=False)
     print("\n[특성 중요도 (gain 비중)]")
     print((imp / imp.sum()).round(3).to_string())
-    model.booster_.save_model(str(ROOT / "data" / f"lgbm_ranker_{args.label}.txt"))
+    save_model(model.booster_, args.label, args.train_end, args.valid_end)
+
+
+def save_model(booster, label, train_end, valid_end):
+    """모델을 텍스트로 저장한다. LightGBM의 save_model은 Windows 한글 경로에 쓰지 못하므로
+    문자열로 바꿔 파이썬이 UTF-8로 쓴다. 학습·검증 구간은 옆의 JSON에 남긴다 (10-4가 확인)."""
+    path = ROOT / "data" / f"lgbm_ranker_{label}.txt"
+    path.write_text(booster.model_to_string(), encoding="utf-8")
+    path.with_suffix(".json").write_text(json.dumps({"train_end": train_end, "valid_end": valid_end}),
+                                         encoding="utf-8")
+    print(f"\n모델 저장: {path.relative_to(ROOT)}")
+
+
+def load_model(label="fwd30"):
+    """save_model로 저장한 모델과 학습·검증 구간. 구간 파일이 없으면 기본값."""
+    path = ROOT / "data" / f"lgbm_ranker_{label}.txt"
+    booster = lgb.Booster(model_str=path.read_text(encoding="utf-8"))
+    meta = path.with_suffix(".json")
+    split = (json.loads(meta.read_text(encoding="utf-8")) if meta.exists()
+             else {"train_end": TRAIN_END, "valid_end": VALID_END})
+    return booster, split
 
 
 if __name__ == "__main__":

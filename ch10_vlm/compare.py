@@ -2,6 +2,7 @@
 
     python -m ch10_vlm.compare                 # 시험 기간 전체 (VLM 판단은 outputs/vlm_scores.parquet에 쌓인다)
     python -m ch10_vlm.compare --days 5        # 앞의 5일만 (시험용)
+    python -m ch10_vlm.compare --start 2026-10-01 --days 5    # 샘플 데이터(08-4의 샘플용 모델)
 
 기준 점수: 6장 Leader Score, 8장 LightGBM(data/lgbm_ranker_fwd30.txt).
 """
@@ -9,11 +10,11 @@
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 
-import lightgbm as lgb
 import pandas as pd
 
 from ch03_pipeline.db import DB_PATH, ROOT, connect
 from ch08_lightgbm.dataset import FEATURES
+from ch08_lightgbm.train import load_model
 from ch10_vlm.cases import theme_members
 from ch10_vlm.chart import ai_chart, load
 from ch10_vlm.judge import judge
@@ -69,11 +70,15 @@ def main():
     ap.add_argument("--db", default=DB_PATH)
     args = ap.parse_args()
 
+    booster, split = load_model("fwd30")                    # 8장에서 저장한 모델
+    if args.start <= split["valid_end"]:
+        raise SystemExit(f"--start {args.start}가 모델의 검증 종료일({split['valid_end']}) 이전입니다. "
+                         f"학습에 쓴 날짜를 평가하게 되므로 그 뒤의 날짜를 주세요 "
+                         f"(샘플 데이터라면 --start 2026-10-01)")
     df = pd.read_parquet(ROOT / "data" / "ml_dataset.parquet")
     df = df[(df.date >= args.start) & df.t.isin(TIMES)].dropna(subset=["fwd30"]).copy()
     if args.days:
         df = df[df.date.isin(sorted(df.date.unique())[:args.days])]
-    booster = lgb.Booster(model_file=str(ROOT / "data" / "lgbm_ranker_fwd30.txt"))    # 8장에서 저장한 모델
     df["lgbm"] = booster.predict(df[FEATURES])
 
     # 판단할 종목: 두 기준 점수의 상위 10 (후보 전체, 5일 연속 수집 종목 각각)
