@@ -36,7 +36,7 @@ def check_columns():
 def check_feature_recompute(con, ml, n=300):
     """2. 특성을 원본 분봉에서 다시 계산해 같은지 (t보다 앞선 봉만 썼는가)."""
     s = ml.sample(n, random_state=0)
-    o = add_outcome(con, s[["date", "t", "code", "ret"]])
+    o = add_outcome(con, s.loc[:, ["date", "t", "code", "ret"]])
     prev = con.execute("""SELECT s.date::VARCHAR AS date, s.code, arg_max(b.close, b.date) AS prev
         FROM s JOIN daily_bars b ON b.code = s.code AND b.date < s.date::DATE GROUP BY ALL""").df()
     o = o.merge(prev, on=["date", "code"])

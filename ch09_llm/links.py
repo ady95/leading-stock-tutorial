@@ -53,7 +53,7 @@ def extended_themes(themes, links, min_titles=MIN_TITLES):
     add = pd.DataFrame({
         "theme_code": [code_of.get(t, "N:" + t) for t in found.theme_name],   # 새 테마는 N:이름
         "theme_name": found.theme_name.values, "code": found.code.values})
-    return pd.concat([themes[["theme_code", "theme_name", "code"]], add], ignore_index=True)
+    return pd.concat([themes.loc[:, ["theme_code", "theme_name", "code"]], add], ignore_index=True)
 
 
 def main():

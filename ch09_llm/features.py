@@ -33,7 +33,7 @@ GROUP BY ALL
 
 
 def add_news_features(con, df):
-    rows = df[["date", "t", "code"]].drop_duplicates().copy()
+    rows = df.loc[:, ["date", "t", "code"]].drop_duplicates().copy()
     rows["t_ts"] = pd.to_datetime(rows.date.astype(str) + " " + rows.t, format="%Y-%m-%d %H%M%S")
     feats = con.execute(FEATURE_SQL).df()        # rows는 위의 DataFrame
     feats["date"] = feats.date.astype(str)

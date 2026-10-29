@@ -22,8 +22,8 @@ def day_signals(con, date):
     replay, _ = from_replay(con, date)
     ch = leader_changes(replay)
     ch = ch[ch.old.notna() & (ch.t <= LAST_ENTRY)]                # 첫 대장주는 교체가 아니다
-    first = replay[replay["rank"] == 1][["t", "code", "name", "market"]]
-    return ch.merge(first, left_on=["t", "new"], right_on=["t", "name"])[["t", "code", "name", "market"]]
+    first = replay.loc[replay["rank"] == 1, ["t", "code", "name", "market"]]
+    return ch.merge(first, left_on=["t", "new"], right_on=["t", "name"]).loc[:, ["t", "code", "name", "market"]]
 
 
 def main():
